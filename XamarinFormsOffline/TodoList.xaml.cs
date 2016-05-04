@@ -7,6 +7,7 @@ namespace XamarinFormsOffline
     public partial class TodoList : ContentPage
     {
         TodoItemManager manager;
+        Button syncButton;
 
         public TodoList()
         {
@@ -18,7 +19,7 @@ namespace XamarinFormsOffline
             if (manager.IsOfflineEnabled &&
                 (Device.OS == TargetPlatform.Windows || Device.OS == TargetPlatform.WinPhone))
             {
-                var syncButton = new Button
+                syncButton = new Button
                 {
                     Text = "Sync items",
                     HeightRequest = 30
@@ -119,7 +120,11 @@ namespace XamarinFormsOffline
 
         public async void OnSyncItems(object sender, EventArgs e)
         {
+            syncButton.IsEnabled = false;
+
             await RefreshItems(true, true);
+
+            syncButton.IsEnabled = true;
         }
 
         private async Task RefreshItems(bool showActivityIndicator, bool syncItems)

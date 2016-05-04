@@ -1,9 +1,3 @@
-// To add offline sync support: add the NuGet package WindowsAzure.MobileServices.SQLiteStore
-// to all projects in the solution and uncomment the symbol definition OFFLINE_SYNC_ENABLED
-// For Xamarin.iOS, also edit AppDelegate.cs and uncomment the call to SQLitePCL.CurrentPlatform.Init()
-// For more information, see: http://go.microsoft.com/fwlink/?LinkId=620342 
-#define OFFLINE_SYNC_ENABLED
-
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -12,14 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.MobileServices;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
-
-
-#if OFFLINE_SYNC_ENABLED
 using Microsoft.WindowsAzure.MobileServices.SQLiteStore;
 using Microsoft.WindowsAzure.MobileServices.Sync;
-#endif
+using Newtonsoft.Json.Linq;
 
 namespace XamarinFormsOffline
 {
@@ -28,17 +17,12 @@ namespace XamarinFormsOffline
         static TodoItemManager defaultInstance = new TodoItemManager();
         MobileServiceClient client;
 
-        #if OFFLINE_SYNC_ENABLED
         IMobileServiceSyncTable<TodoItem> todoTable;
-        #else
-        IMobileServiceTable<TodoItem> todoTable;
-#endif
 
         private TodoItemManager()
         {
-            this.client = new MobileServiceClient("http://yoursitename.azurewebsites.net");
+            this.client = new MobileServiceClient("http://donnam-testforms.azurewebsites.net");
 
-#if OFFLINE_SYNC_ENABLED
             var store = new MobileServiceSQLiteStore("localstore.db");
             store.DefineTable<TodoItem>();
 
@@ -46,9 +30,6 @@ namespace XamarinFormsOffline
             this.client.SyncContext.InitializeAsync(store);
 
             this.todoTable = client.GetSyncTable<TodoItem>();
-#else
-            this.todoTable = client.GetTable<TodoItem>();
-#endif
         }
 
         public static TodoItemManager DefaultManager
@@ -77,12 +58,11 @@ namespace XamarinFormsOffline
         {
             try
             {
-#if OFFLINE_SYNC_ENABLED
                 if (syncItems)
                 {
                     await this.SyncAsync();
                 }
-#endif
+
                 IEnumerable<TodoItem> items = await todoTable
                     .Where(todoItem => !todoItem.Done)
                     .OrderBy(todoItem => todoItem.UpdatedAt)
@@ -90,9 +70,9 @@ namespace XamarinFormsOffline
 
                 return new ObservableCollection<TodoItem>(items);
             }
-            catch (MobileServiceInvalidOperationException msioe)
+            catch (MobileServiceInvalidOperationException ex)
             {
-                Debug.WriteLine(@"Invalid sync operation: {0}", msioe.Message);
+                Debug.WriteLine(@"Invalid sync operation: {0}", ex.Message);
             }
             catch (Exception e)
             {
@@ -113,7 +93,6 @@ namespace XamarinFormsOffline
             }
         }
 
-        #if OFFLINE_SYNC_ENABLED
         public async Task SyncAsync()
         {
             try
@@ -137,6 +116,11 @@ namespace XamarinFormsOffline
 
         private async Task ResolveConflictsAsync(ReadOnlyCollection<MobileServiceTableOperationError> syncErrors)
         {
+            // Bulk conflict resolution by looping through the result of the exception.
+            // For more control over the sync process, including resolving conflicts and retrying each operation in the queue,
+            // create a IMobileServiceSyncHandler. For an example, see SyncHandler.cs.
+            // To use, pass it in the call to client.SyncContext.InitializeAsync.
+
             foreach (var error in syncErrors)
             {
                 Debug.WriteLine($"Conflict during update: Item: {error.Item}");
@@ -167,6 +151,5 @@ namespace XamarinFormsOffline
             }
            
         }
-        #endif
     }
 }
